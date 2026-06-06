@@ -9,7 +9,7 @@ const firebaseConfig = {
 
 window.db = null;
 window.auth = null;
-window.storage = null;
+//window.storage = null;
 window.isFirebaseInitialized = false;
 
 try {

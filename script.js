@@ -2095,73 +2095,48 @@ function initUploadPage() {
         uploadForm.querySelector("button[type='submit']").disabled = true;
 
         if (window.isFirebaseInitialized) {
+            const formData = new FormData();
+formData.append("file", file);
+formData.append("upload_preset", "gju_notes_upload");
+
+fetch("https://api.cloudinary.com/v1_1/deimmeupk/raw/upload", {
+    method: "POST",
+    body: formData
+})
+.then(res => res.json())
+.then(data => {
+
+    const newResource = {
+        id: `uploaded-${Date.now()}`,
+        title,
+        type,
+        semester,
+        subject,
+        author,
+        size: formattedSize,
+        date: new Date().toLocaleDateString(),
+        rating: 5.0,
+        downloadCount: 0,
+        filePath: data.secure_url,
+        preview: customPreview,
+        approved: true
+    };
+
+    Database.saveResource(newResource);
+
+    progressBar.style.width = "100%";
+    progressPercentage.textContent = "100%";
+
+    showToast("Upload Successful!");
+
+})
+.catch(err => {
+    console.error(err);
+    showToast("Upload Failed");
+});
             // REAL FIREBASE STORAGE UPLOAD WORKFLOW
-            try {
-                const storageRef = storage.ref('resources/' + Date.now() + '_' + file.name);
-                const uploadTask = storageRef.put(file);
-
-                uploadTask.on('state_changed', 
-                    (snapshot) => {
-                        const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-                        progressBar.style.width = `${progress}%`;
-                        progressPercentage.textContent = `${progress}%`;
-                        
-                        if (progress < 25) progressStatus.textContent = "Initializing secure upload pipe...";
-                        else if (progress < 50) progressStatus.textContent = "Encrypting document blocks...";
-                        else if (progress < 90) progressStatus.textContent = "Streaming document bytes to Firebase...";
-                        else progressStatus.textContent = "Finalizing upload stream...";
-                    }, 
-                    (error) => {
-                        console.error("Firebase Storage Upload Error:", error);
-                        showToast("Upload failed: " + error.message);
-                        progressBox.style.display = "none";
-                        uploadForm.querySelector("button[type='submit']").disabled = false;
-                    }, 
-                    async () => {
-                        try {
-                            const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
-                            
-                            const newResource = {
-                                id: `uploaded-${Date.now()}`,
-                                title: title,
-                                type: type,
-                                semester: semester,
-                                subject: subject,
-                                author: author,
-                                size: formattedSize,
-                                date: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }),
-                                rating: 5.0,
-                                downloadCount: 0,
-                                filePath: downloadURL, // Public Firebase Cloud Storage download URL!
-                                preview: customPreview,
-                                approved: false // Unapproved by default for moderation review
-                            };
-
-                            await Database.saveResource(newResource);
-                            showToast("Resource Uploaded & Sent for Moderation!");
-                            
-                            // Clear inputs and redirect
-                            setTimeout(() => {
-                                uploadForm.reset();
-                                fileInput.value = "";
-                                selectedFileIndicator.style.display = "none";
-                                progressBox.style.display = "none";
-                                uploadForm.querySelector("button[type='submit']").disabled = false;
-                                window.location.href = type === "notes" ? "notes.html" : "papers.html";
-                            }, 1000);
-                        } catch (err) {
-                            console.error("Firestore Resource Save Error:", err);
-                            showToast("Failed to index resource in database.");
-                            progressBox.style.display = "none";
-                            uploadForm.querySelector("button[type='submit']").disabled = false;
-                        }
-                    }
-                );
-            } catch (err) {
-                console.error("Storage Initialization Error:", err);
-                showToast("Failed to connect to Storage.");
-                progressBox.style.display = "none";
-                uploadForm.querySelector("button[type='submit']").disabled = false;
+            
+            
             }
         } else {
             // OFFLINE BACKUP LOCALSTORAGE SANDBOX SIMULATION
